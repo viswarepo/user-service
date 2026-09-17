@@ -29,7 +29,7 @@ public class UserController {
 
     // READ - single
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable String id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -61,20 +61,20 @@ public class UserController {
     // UPDATE - full replace
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDTO> updateUser(
-            @PathVariable Long id, @Valid @RequestBody UserRequestDTO requestDTO) {
+            @PathVariable String id, @Valid @RequestBody UserRequestDTO requestDTO) {
         return ResponseEntity.ok(userService.updateUser(id, requestDTO));
     }
 
     // UPDATE - partial
     @PatchMapping("/{id}")
     public ResponseEntity<UserResponseDTO> partialUpdateUser(
-            @PathVariable Long id, @RequestBody UserRequestDTO requestDTO) {
+            @PathVariable String id, @RequestBody UserRequestDTO requestDTO) {
         return ResponseEntity.ok(userService.partialUpdateUser(id, requestDTO));
     }
 
     // DELETE
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }

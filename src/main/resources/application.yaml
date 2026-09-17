@@ -2,8 +2,8 @@ spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/sms_dbs
-    username: sms
+    url: jdbc:postgresql://localhost:5432/sms_user_db
+    username: sms_user
     password: password
     driver-class-name: org.postgresql.Driver
     jpa:
