@@ -20,8 +20,8 @@ import java.time.LocalDateTime;
 public class UserInfo {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @Column(nullable = false, length = 50)
     private String username;
@@ -46,13 +46,16 @@ public class UserInfo {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "org_id", length = 50)
+    @Column(name = "org_id", length = 255)
     private String orgId;
 
-    @Column(name = "first_name", length = 50)
+    @Column(name = "customer_id", length = 255)
+    private String customerId;
+
+    @Column(name = "first_name", length = 255)
     private String firstName;
 
-    @Column(name = "last_name", length = 50)
+    @Column(name = "last_name", length = 255)
     private String lastName;
 
     @Column(name = "created_at", updatable = false)

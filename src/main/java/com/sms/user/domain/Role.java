@@ -17,8 +17,8 @@ import java.util.Set;
 @AllArgsConstructor*/
 public class Role {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @ManyToMany(mappedBy = "roles")
     @JsonIgnore

@@ -29,6 +29,8 @@ public class UserRequestDTO {
 
     private String oraganizationId;
 
+    private String customerId;
+
     //private Set<String> roles;
 
 }

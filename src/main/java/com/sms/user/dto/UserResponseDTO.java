@@ -13,7 +13,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserResponseDTO {
-    private Long id;
+    private String id;
     private String username;
     private String password;
     private String email;
@@ -21,6 +21,7 @@ public class UserResponseDTO {
     private String lastName;
     private String role;
     private String organizationId;
+    private String customerId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     //private Set<String> roles;

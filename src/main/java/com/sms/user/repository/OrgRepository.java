@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface OrgRepository extends JpaRepository<OrgInfo, Long> {
+public interface OrgRepository extends JpaRepository<OrgInfo, String> {
 
     Optional<OrgInfo> findByEmail(String email);
 
