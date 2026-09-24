@@ -39,6 +39,12 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+
     // READ - paged/sorted, e.g. GET /api/v1/users?page=0&size=10&sort=username,asc
     @GetMapping
     public ResponseEntity<Page<UserResponseDTO>> getUsersPaged(Pageable pageable) {
