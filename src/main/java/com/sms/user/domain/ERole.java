@@ -1,8 +1,8 @@
 package com.sms.user.domain;
 
 public enum ERole {
-    ROLE_USER,
-    ROLE_MODERATOR,
+    ROLE_OWNER,
+    ROLE_ADMIN_SUPER,
     ROLE_ADMIN,
     ROLE_CUSTOMER
 }
