@@ -23,38 +23,21 @@ public class OrgInfo {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "org_type", nullable = false)
+    private EOrgType orgType; // OWNER or CLIENT
+
     @Column(name = "org_name", length = 50)
     private String orgname;
 
     @Column(name ="org_email", length = 100)
     private String email;
 
-    @Column(name="org_description", length = 50)
-    private String description;
-
-    @Column(name = "org_legal_name", length = 50)
-    private String legalName;
+    @Column(name ="cust_signup_url", length = 100)
+    private String custSignupUrl;
 
     @Column(name="org_phone", length = 50)
     private String phone;
-
-    @Column(name="org_website", length = 200)
-    private String website;
-
-    @Column(name="org_country", length = 50)
-    private String country;
-
-    @Column(name = "org_state", length = 50)
-    private String state;
-
-    @Column(name = "org_city", length = 50)
-    private String city;
-
-    @Column(name="address1", length = 200)
-    private String address1;
-
-    @Column(name = "address2", length = 200)
-    private String address2;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

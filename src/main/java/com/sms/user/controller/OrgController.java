@@ -1,10 +1,11 @@
 package com.sms.user.controller;
 
-import com.sms.user.dto.OrgRequestDTO;
-import com.sms.user.dto.OrgResponseDTO;
+import com.sms.user.client.SubscriptionServiceClient;
+import com.sms.user.dto.*;
 import com.sms.user.service.OrgService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -13,18 +14,35 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+//@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/v1/org")
 @RequiredArgsConstructor
 public class OrgController {
 
     private final OrgService orgService;
+    private final SubscriptionServiceClient subscriptionServiceClient;
 
     // CREATE
-    @PostMapping("/register")
-    public ResponseEntity<OrgResponseDTO> register(@Valid @RequestBody OrgRequestDTO requestDTO) {
-        OrgResponseDTO created = orgService.createOrg(requestDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @CrossOrigin(origins = "http://localhost:5173")
+    @PostMapping("/register/{userRole}")
+    public ResponseEntity<OrgResponseDTO> register(
+            @RequestBody OrgRequestDTO requestDTO,
+            @PathVariable String userRole) {
+        OrgResponseDTO orgResponse = orgService.createOrg(requestDTO);
+
+        CreateCustomerRequest customerRequest = new CreateCustomerRequest();
+        customerRequest.setOrganizationId(orgResponse.getId());
+        customerRequest.setName(orgResponse.getOrgname());
+        customerRequest.setEmail(orgResponse.getOrgEmail());
+        customerRequest.setMobile(requestDTO.getMobile());
+        customerRequest.setCustomerType(requestDTO.getCustomerType());
+        customerRequest.setUsername(requestDTO.getUsername());
+        customerRequest.setPassword(requestDTO.getPassword());
+
+        subscriptionServiceClient.createCustomer(customerRequest,userRole);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(orgResponse);
     }
 
     // READ - single
@@ -80,5 +98,18 @@ public class OrgController {
     }
 
     //Org Based Apis
+
+    // 🔎 View customer profile
+    @GetMapping("/{organizationId}/profile")
+    public ResponseEntity<OrgProfileResponse> getProfile(@PathVariable String organizationId) {
+        return ResponseEntity.ok(orgService.getProfile(organizationId));
+    }
+
+    // ✏️ Update customer profile
+    @PutMapping("/{organizationId}/profile/update")
+    public ResponseEntity<OrgProfileResponse> updateProfile(@PathVariable String organizationId,
+                                                 @Valid @RequestBody OrgProfileRequest request) {
+         return ResponseEntity.ok(orgService.updateProfile(organizationId, request));
+    }
 
 }

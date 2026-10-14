@@ -1,13 +1,19 @@
 package com.sms.user.service;
 
+import com.sms.user.domain.EOrgType;
+import com.sms.user.domain.OrganizationProfile;
+import com.sms.user.dto.OrgProfileRequest;
+import com.sms.user.dto.OrgProfileResponse;
 import com.sms.user.dto.OrgRequestDTO;
 import com.sms.user.dto.OrgResponseDTO;
 import com.sms.user.domain.OrgInfo;
 import com.sms.user.exception.DuplicateResourceException;
 import com.sms.user.exception.ResourceNotFoundException;
+import com.sms.user.repository.OrgProfileRepository;
 import com.sms.user.repository.OrgRepository;
 import com.sms.user.service.OrgService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,6 +29,13 @@ import java.util.Optional;
 public class OrgService {
 
     private final OrgRepository orgRepository;
+    private final OrgProfileRepository orgProfileRepository;
+
+    @Value("${tenant.signup.url}")
+    private String tenantSignupUrl;
+
+    @Value("${customer.signup.url}")
+    private String customerSignupUrl;
 
     public OrgResponseDTO createOrg(OrgRequestDTO requestDTO) {
 
@@ -32,22 +45,22 @@ public class OrgService {
         if (orgRepository.existsByEmail(requestDTO.getEmail())) {
             throw new DuplicateResourceException("Email already in use: " + requestDTO.getEmail());
         }
+
         OrgInfo org = OrgInfo.builder()
                 .orgname(requestDTO.getOrgname())
                 .email(requestDTO.getEmail())
-                .legalName(requestDTO.getLegalName())
-                .phone(requestDTO.getPhone())
-                .website(requestDTO.getWebsite())
-                .country(requestDTO.getCountry())
-                .state(requestDTO.getState())
-                .city(requestDTO.getCity())
-                .address1(requestDTO.getAddress1())
-                .address2(requestDTO.getAddress2())
-                .description(requestDTO.getDescription())
+                .orgType(EOrgType.valueOf(EOrgType.CLIENT.name()))
+                .custSignupUrl("TENANT")
                 .build();
 
         OrgInfo saved = orgRepository.save(org);
-        return toResponseDTO(saved);
+
+        OrgInfo update = orgRepository.findById(saved.getId())
+                .orElseThrow(()->new ResourceNotFoundException("Org not found"));
+
+        update.setCustSignupUrl(customerSignupUrl+"?orgId="+update.getId());
+        OrgInfo saveandupdate = orgRepository.save(update);
+        return toResponseDTO(saveandupdate);
     }
 
     @Transactional(readOnly = true)
@@ -96,15 +109,8 @@ public class OrgService {
         }
         org.setOrgname(requestDTO.getOrgname());
         org.setEmail(requestDTO.getEmail());
-        org.setLegalName(requestDTO.getLegalName());
-        org.setPhone(requestDTO.getPhone());
-        org.setWebsite(requestDTO.getWebsite());
-        org.setCountry(requestDTO.getCountry());
-        org.setState(requestDTO.getState());
-        org.setCity(requestDTO.getCity());
-        org.setAddress1(requestDTO.getAddress1());
-        org.setAddress2(requestDTO.getAddress2());
-        org.setDescription(requestDTO.getDescription());
+
+        org.setOrgType(requestDTO.getOrgType());
         OrgInfo updated = orgRepository.save(org);
         return toResponseDTO(updated);
     }
@@ -117,33 +123,10 @@ public class OrgService {
         if (StringUtils.hasText(requestDTO.getEmail())) {
             org.setEmail(requestDTO.getEmail());
         }
-        if (StringUtils.hasText(requestDTO.getLegalName())) {
-            org.setLegalName(requestDTO.getLegalName());
-        }
-        if (StringUtils.hasText(requestDTO.getPhone())) {
-            org.setPhone(requestDTO.getPhone());
-        }
-        if (StringUtils.hasText(requestDTO.getWebsite())) {
-            org.setWebsite(requestDTO.getWebsite());
-        }
-        if (StringUtils.hasText(requestDTO.getCountry())) {
-            org.setCountry(requestDTO.getCountry());
-        }
-        if (StringUtils.hasText(requestDTO.getState())) {
-            org.setState(requestDTO.getState());
-        }
-        if (StringUtils.hasText(requestDTO.getCity())) {
-            org.setCity(requestDTO.getCity());
-        }
-        if (StringUtils.hasText(requestDTO.getAddress1())) {
-            org.setAddress1(requestDTO.getAddress1());
-        }
-        if (StringUtils.hasText(requestDTO.getAddress2())) {
-            org.setAddress2(requestDTO.getAddress2());
-        }
-        if (StringUtils.hasText(requestDTO.getDescription())) {
-            org.setDescription(requestDTO.getDescription());
-        }
+
+       if (StringUtils.hasText(requestDTO.getOrgType().name())) {
+           org.setOrgType(requestDTO.getOrgType());
+       }
         OrgInfo updated = orgRepository.save(org);
 
         return null;
@@ -160,15 +143,10 @@ public class OrgService {
         return OrgResponseDTO.builder()
                 .id(org.getId())
                 .orgname(org.getOrgname())
-                .legalName(org.getLegalName())
-                .description(org.getDescription())
                 .orgEmail(org.getEmail())
                 .phone(org.getPhone())
-                .address1(org.getAddress1())
-                .address1(org.getAddress1())
-                .country(org.getCountry())
-                .state(org.getState())
-                .city(org.getCity())
+                .orgType(org.getOrgType().name())
+                .customerSignupUrl(org.getCustSignupUrl())
                 .createdAt(org.getCreatedAt())
                 .updatedAt(org.getUpdatedAt())
                 .build();
@@ -176,5 +154,39 @@ public class OrgService {
     private OrgInfo findOrgOrThrow(String id) {
         return orgRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found with id: " + id));
+    }
+
+    public OrgProfileResponse getProfile(String organizationId) {
+        OrgInfo orgInfo = orgRepository.findById(organizationId)
+                .orElseThrow(() -> new RuntimeException("Organization not found"));
+        OrganizationProfile profile = orgProfileRepository.findByOrganizationId(organizationId)
+                .orElse(new OrganizationProfile(organizationId)); // empty profile if not set
+        return OrgProfileResponse.from(orgInfo, profile);
+    }
+
+    public OrgProfileResponse updateProfile(String organizationId, OrgProfileRequest request) {
+        OrgInfo orgInfo = orgRepository.findById(organizationId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        OrganizationProfile profile = orgProfileRepository.findByOrganizationId(organizationId)
+                .orElse(new OrganizationProfile(organizationId));
+        profile.setDescription(request.getDescription());
+        profile.setLegalName(request.getLegalName());
+        profile.setCountry(request.getCountry());
+        profile.setState(request.getState());
+        profile.setCity(request.getCity());
+        profile.setAddress1(request.getAddress1());
+        profile.setAddress2(request.getAddress2());
+        profile.setPhone(request.getPhone());
+        profile.setWebsite(request.getWebsite());
+        profile.setPreferredCurrency(request.getPreferredCurrency());
+        profile.setLocale(request.getLocale());
+        profile.setTaxId(request.getTaxId());
+        profile.setAlterMobile(request.getAlterMobile());
+        profile.setLandlineNumber(request.getLandlineNumber());
+
+        orgProfileRepository.save(profile);
+
+        return OrgProfileResponse.from(orgInfo, profile);
     }
 }

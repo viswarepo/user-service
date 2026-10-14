@@ -21,16 +21,13 @@ public class UserRequestDTO {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
-    private String firstName;
-
-    private String lastName;
+    @NotBlank(message = "Full name is required")
+    private String fullName;
 
     private ERole role;
 
     private String oraganizationId;
 
     private String customerId;
-
-    //private Set<String> roles;
 
 }
