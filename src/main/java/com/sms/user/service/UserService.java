@@ -1,6 +1,7 @@
 package com.sms.user.service;
 
 
+import com.sms.user.domain.ERole;
 import com.sms.user.domain.UserInfo;
 import com.sms.user.dto.UserRequestDTO;
 import com.sms.user.dto.UserResponseDTO;
@@ -28,53 +29,39 @@ public class UserService {
     //private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserResponseDTO createUser(UserRequestDTO requestDTO) {
+    public UserResponseDTO createUser(String organizationId,UserRequestDTO requestDTO, String userRole) {
         if (userRepository.existsByEmail(requestDTO.getEmail())) {
             throw new DuplicateResourceException("Email already in use: " + requestDTO.getEmail());
         }
         if (userRepository.existsByUsername(requestDTO.getUsername())) {
             throw new DuplicateResourceException("Username already taken: " + requestDTO.getUsername());
         }
-
-        /*Set<String> strRoles = requestDTO.getRoles();
-        Set<Role> roles = new HashSet<>();
-
-        if (strRoles == null || strRoles.isEmpty()) {
-            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role not found."));
-            roles.add(userRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Error: Role not found."));
-                        roles.add(adminRole);
-                        break;
-                    case "mod":
-                        Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR)
-                                .orElseThrow(() -> new RuntimeException("Error: Role not found."));
-                        roles.add(modRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role not found."));
-                        roles.add(userRole);
-                }
-            });
-        }*/
+        requestDTO.setRole(ERole.valueOf(ERole.ROLE_ADMIN.name()));
+        if(userRole.equals(ERole.ROLE_ADMIN_SUPER.name())){
+            if (userRepository.existsByOrgIdAndRole(organizationId, ERole.valueOf(ERole.ROLE_ADMIN_SUPER.name()))) {
+                throw new IllegalStateException("SuperAdmin already exists, can not create more than one.");
+            }
+            if(requestDTO.getCustomerId()==null || requestDTO.getCustomerId().isEmpty()) {
+                requestDTO.setRole(ERole.valueOf(ERole.ROLE_ADMIN.name()));
+            }else{
+                requestDTO.setRole(ERole.valueOf(ERole.ROLE_ADMIN_SUPER.name()));
+            }
+        }
+        if(userRole.equals(ERole.ROLE_OWNER.name())){
+            requestDTO.setRole(ERole.valueOf(ERole.ROLE_OWNER.name()));
+        }
+        if(userRole.equals(ERole.ROLE_CUSTOMER.name())){
+            requestDTO.setRole(ERole.valueOf(ERole.ROLE_CUSTOMER.name()));
+        }
         UserInfo user = UserInfo.builder()
                 .username(requestDTO.getUsername())
                 .email(requestDTO.getEmail())
                 .password(passwordEncoder.encode(requestDTO.getPassword()))
-                .firstName(requestDTO.getFirstName())
-                .lastName(requestDTO.getLastName())
+                .fullName(requestDTO.getFullName())
                 .role(requestDTO.getRole())
-                .orgId(requestDTO.getOraganizationId())
+                .orgId(organizationId)
                 .customerId(requestDTO.getCustomerId())
-                //.roles(roles)
                 .build();
-
         UserInfo saved = userRepository.save(user);
         return toResponseDTO(saved);
     }
@@ -87,24 +74,35 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserResponseDTO getUserByUsername(String username) {
-        Optional<UserInfo> userInfo= userRepository.findByUsername(username);
-        UserResponseDTO userResponseDTO = new UserResponseDTO();
-        userResponseDTO.setId(userInfo.get().getId());
-        userResponseDTO.setUsername(userInfo.get().getUsername());
-        userResponseDTO.setPassword(userInfo.get().getPassword());
-        userResponseDTO.setEmail(userInfo.get().getEmail());
-        userResponseDTO.setRole(userInfo.get().getRole().toString());
-        userResponseDTO.setOrganizationId(userInfo.get().getOrgId());
-        userResponseDTO.setCustomerId(userInfo.get().getCustomerId());
-        return userResponseDTO;
+        Optional<UserResponseDTO> userResponseDTO= userRepository.getUserAndOrgInfo(username);
+        return userResponseDTO.get();
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponseDTO> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+    public List<UserResponseDTO> getAllUsers(String userRole, String organizationId) {
+
+        if(userRole.equals(ERole.ROLE_OWNER.name())){
+            return userRepository.findByRole(ERole.valueOf(ERole.ROLE_OWNER.name())).stream()
+                    .map(this::toResponseDTO)
+                    .toList();
+
+        }else if(userRole.equals(ERole.ROLE_ADMIN_SUPER.name())){
+            return userRepository.findByRoleAndOrgId(ERole.valueOf(ERole.ROLE_ADMIN.name()),organizationId)
+                    .stream()
+                    .map(this::toResponseDTO)
+                    .toList();
+        }else if(userRole.equals(ERole.ROLE_ADMIN.name())){
+            return userRepository.findByRoleAndOrgId(ERole.valueOf(ERole.ROLE_OWNER.name()),organizationId)
+                    .stream()
+                    .map(this::toResponseDTO)
+                    .toList();
+        }else{
+            return userRepository.findAll()
+                    .stream()
+                    .map(this::toResponseDTO)
+                    .toList();
+        }
+
     }
 
     @Transactional(readOnly = true)
@@ -133,8 +131,7 @@ public class UserService {
 
         user.setUsername(requestDTO.getUsername());
         user.setEmail(requestDTO.getEmail());
-        user.setFirstName(requestDTO.getFirstName());
-        user.setLastName(requestDTO.getLastName());
+        user.setFullName(requestDTO.getFullName());
         if (StringUtils.hasText(requestDTO.getPassword())) {
             user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
         }
@@ -152,16 +149,13 @@ public class UserService {
         if (StringUtils.hasText(requestDTO.getEmail())) {
             user.setEmail(requestDTO.getEmail());
         }
-        if (StringUtils.hasText(requestDTO.getFirstName())) {
-            user.setFirstName(requestDTO.getFirstName());
+        if (StringUtils.hasText(requestDTO.getFullName())) {
+            user.setFullName(requestDTO.getFullName());
         }
-        if (StringUtils.hasText(requestDTO.getLastName())) {
-            user.setLastName(requestDTO.getLastName());
-        }
+
         if (StringUtils.hasText(requestDTO.getPassword())) {
             user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
         }
-
         UserInfo updated = userRepository.save(user);
         return toResponseDTO(updated);
     }
@@ -183,13 +177,37 @@ public class UserService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
+                .fullName(user.getFullName())
                 .role(user.getRole().toString())
                 .organizationId(user.getOrgId())
                 .customerId(user.getCustomerId())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+
+    public void resetPassword(String username, String newPassword) {
+        UserInfo user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found in org"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    public UserResponseDTO findUser(String orgId, String username) {
+        UserInfo user = userRepository.findByUsernameAndOrgId(username, orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return toResponseDTO(user);
+    }
+
+    public UserResponseDTO findUserByEmail(String email) {
+        UserInfo user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return toResponseDTO(user);
+    }
+    public UserResponseDTO findUserByUsername(String username) {
+        UserInfo user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return toResponseDTO(user);
     }
 }

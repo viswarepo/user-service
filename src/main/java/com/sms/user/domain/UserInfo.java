@@ -38,7 +38,7 @@ public class UserInfo {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private ERole role = ERole.ROLE_USER;
+    private ERole role = ERole.ROLE_ADMIN;
 
     @Column(nullable = false, length = 100)
     private String email;
@@ -52,11 +52,8 @@ public class UserInfo {
     @Column(name = "customer_id", length = 255)
     private String customerId;
 
-    @Column(name = "first_name", length = 255)
-    private String firstName;
-
-    @Column(name = "last_name", length = 255)
-    private String lastName;
+    @Column(name = "full_name", length = 255)
+    private String fullName;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
